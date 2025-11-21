@@ -1,98 +1,124 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { FormattedMessage } from 'react-intl';
-import { User, UserRole, userDefaults } from '../../../types/items';
-import { Button, Form, FormGroup, Input, Label } from 'reactstrap';
-import { useTranslate } from '../../../redux/componentHooks';
+import { Button, Form, FormFeedback, FormGroup, Input, Label } from 'reactstrap';
+import { useTranslate } from '../redux/componentHooks';
 import { showErrorNotification, showSuccessNotification } from '../utils/notifications';
 
 interface ChangePasswordProps {
-	user: User;
 	handleClose: () => void;
 }
 
 /**
- * 
- * @param props 
- * @returns 
+ *
+ * @param handleClose Function to close modal after changing password
+ * @param handleClose.handleClose Needed by ESLint see above
+ * @returns
  */
-export default function ChangePasswordComponent(props: ChangePasswordProps) {
+export default function ChangePasswordComponent({ handleClose }: ChangePasswordProps) {
 	const translate = useTranslate();
 
+	const [currentPassword, setCurrentPassword] = useState<string>('');
 	const [newPassword, setPassword] = useState<string>('');
 	const [confirmedPassword, setConfirmedPassword] = useState<string>('');
 
-	//const currentLoggedInUser = useAppSelector(selectCurrentUserProfile) as User;
-
-	const [userDetails, setUserDetails] = useState({
-		...userDefaults,
-		...props.user,
-	});
-
-	const initialUserDetails = {
-		...userDefaults,
-		...props.user
-	};
+	const [passwordLengthValid, setPasswordLengthValid] = useState(true);
+	const [passwordMatch, setPasswordMatch] = useState(true);
 
 	useEffect(() => {
-		// If any character is added in either field, it will count as password
-		// being modified. This will actively update the passwordModified
-		// boolean value when any change is made.
-		const passwordFieldChanged = userDetails.password.length > 0 || userDetails.confirmPassword.length > 0;
+		setPasswordLengthValid(newPassword.length === 0 || newPassword.length >= 8);
+		setPasswordMatch(newPassword === confirmedPassword);
+	}, [newPassword, confirmedPassword]);
 
-		setUserDetails(prevDetails => ({
-			...prevDetails,
-			passwordMatch: (userDetails.password === userDetails.confirmPassword),
-			passwordLength: userDetails.password.length > 7 || userDetails.password.length === 0
-		}));
-	}, [userDetails.password, userDetails.confirmPassword]);
-
-	const handleSubmit = async (event: React.MouseEvent<HTMLButtonElement>) => {
-		if(newPassword !== confirmedPassword) {
+	const handleSubmit = () => {
+		if (!passwordLengthValid) {
+			showErrorNotification(translate('user.password.length'));
+			return;
+		}
+		if (!passwordMatch) {
 			showErrorNotification(translate('user.password.mismatch'));
 			return;
 		}
+		showSuccessNotification(translate('user.password.changed'));
 		handleClose();
-	}
-
+	};
 
 	return (
 		<div>
-			<h2>Change Password</h2>
-			<FormGroup>
-				<Label for='password'>
-					{translate('password')}
-				</Label>
-				<Input
-					id='password'
-					name='password'
-					type='password'
-					placeholder={translate('user.password.edit')}
-					value={userDetails.password}
-					onChange={e => handleStringChange(e)}
-					invalid={!userDetails.passwordLength}
-				/>
-				<FormFeedback>
-					{translate('user.password.length')}
-				</FormFeedback>
-			</FormGroup>
-			<FormGroup>
-				<Label for='confirmPassword'>
-					{translate('password.confirm')}
-				</Label>
-				<Input
-					id='confirmPassword'
-					name='confirmPassword'
-					type='password'
-					value={userDetails.confirmPassword}
-					onChange={e => handleStringChange(e)}
-					invalid={!userDetails.passwordMatch}
-				/>
-				<FormFeedback>
-					{translate('user.password.mismatch')}
-				</FormFeedback>
-			</FormGroup>
+			<Form style={formStyle}>
+				<FormGroup>
+					<Label for='currentPassword'>{translate('password.current')}</Label>
+					<Input
+						id='currentPassword'
+						type='password'
+						value={currentPassword}
+						onChange={e => setCurrentPassword(e.target.value)}
+					/>
+				</FormGroup>
+
+				<FormGroup>
+					<Label for='newPassword'>{translate('password.new')}</Label>
+					<Input
+						id='newPassword'
+						type='password'
+						value={newPassword}
+						onChange={e => setPassword(e.target.value)}
+						invalid={!passwordLengthValid}
+					/>
+					<FormFeedback>
+						{translate('user.password.length')}
+					</FormFeedback>
+				</FormGroup>
+
+				<FormGroup>
+					<Label for='confirmedPassword'>{translate('password.confirm')}</Label>
+					<Input
+						id='confirmedPassword'
+						type='password'
+						value={confirmedPassword}
+						onChange={e => setConfirmedPassword(e.target.value)}
+						invalid={!passwordMatch}
+					/>
+					<FormFeedback>
+						{translate('user.password.mismatch')}
+					</FormFeedback>
+				</FormGroup>
+
+				<div className='row'>
+					<div className='col'>
+						<Button
+							outline
+							type='submit'
+							onClick={handleSubmit}
+							disabled={
+								!currentPassword.length ||
+								!newPassword.length ||
+								!confirmedPassword.length ||
+								!passwordLengthValid ||
+								!passwordMatch
+							}
+						>
+							<FormattedMessage id='submit' />
+						</Button>
+					</div>
+
+					<div className='col'>
+						<Button
+							outline
+							type='button'
+							onClick={handleClose}
+						>
+							<FormattedMessage id='close' />
+						</Button>
+					</div>
+				</div>
+			</Form>
 		</div>
 	);
-
 }
+
+const formStyle = {
+	maxWidth: '500px',
+	margin: 'auto',
+	width: '50%'
+};
